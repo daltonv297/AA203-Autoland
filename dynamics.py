@@ -40,23 +40,23 @@ def f(s, u_in):
     g = 9.81 # m/s^2
     rho = 1.225 # kg/m^3
 
-    # TODO: find real values for these
-    m = 1 # mass, kg
-    I_y = 1 # Moment of inertia about the y-axis, kg*m^2
-    S = 1 # planform wing area, m^2
-    c = 1 # mean aerodynamic chord, m
-    AR = 1 # aspect ratio
-    e = 1 # Oswald efficiency factor
+    # https://www.boeing.com/commercial/airports/3_view.page
+    m = 272000 # mass, kg
+    I_y = 1 # Moment of inertia about the y-axis, kg*m^2 
+    S = 511 # planform wing area, m^2
+    c = 9.14 # mean aerodynamic chord, m
+    AR = 8 # aspect ratio
+    e = 0.85 # Oswald efficiency factor
     # stability derivatives:
-    CL_alpha = 1 
-    CL_q = 1
-    CL_delta_e = 1
-    CM_alpha = 1
-    CM_q = 1
-    CM_delta_e = 1
-    CL0 = 1
-    CD0 = 1
-    CM0 = 1
+    CL_alpha = 4.758 
+    CL_q = 9.911
+    CL_delta_e = 0.00729
+    CM_alpha = -1.177
+    CM_q = -26.684
+    CM_delta_e = -0.0241
+    CL0 = 0.1720 # AVL
+    CD0 = 0.0184 # https://www.sesarju.eu/sites/default/files/documents/sid/2018/papers/SIDs_2018_paper_75.pdf
+    CM0 = -0.0969 # AVL
     
     u, w, q, theta, x_e, z_e = s
     T, delta_e = u_in
