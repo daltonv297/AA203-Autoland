@@ -1,4 +1,6 @@
 import numpy as np
+import jax
+import jax.numpy as jnp
 
 def f(t, s, u_in):
     '''Computes s_dot = f(s, u_in).
@@ -14,7 +16,7 @@ def f(t, s, u_in):
 
     Parameters
     ----------
-    s : numpy.ndarray
+    s : jax.numpy.ndarray
         Current state
         s = [u, w, q, theta, x_e, z_e]
             u: velocity component parallel to X_b (m/s)
@@ -24,7 +26,7 @@ def f(t, s, u_in):
             x_e: earth-fixed x position (m)
             z_e: earth-fixed z position (positive down) (m)
             
-    u_in : numpy.ndarray
+    u_in : jax.numpy.ndarray
         Control input
         u_in = [T, delta_e]
             T: thrust (N)
@@ -32,7 +34,7 @@ def f(t, s, u_in):
 
     Returns
     -------
-    s_dot : numpy.ndarray
+    s_dot : jax.numpy.ndarray
         Time derivative of state
     '''
 
@@ -61,8 +63,8 @@ def f(t, s, u_in):
     u, w, q, theta, x_e, z_e = s
     T, delta_e = u_in
     
-    V = np.sqrt(u*u + w*w)
-    alpha = np.arctan(w/u)
+    V = jnp.sqrt(u*u + w*w)
+    alpha = jnp.arctan(w/u)
     q_hat = q * c / (2 * V)
 
     # Lift, drag, and moment coefficients
@@ -76,14 +78,14 @@ def f(t, s, u_in):
     M = 0.5 * rho * V*V * S * c * CM
 
     # X and Z forces (body frame)
-    X = T - D * np.cos(alpha) + L * np.sin(alpha)
-    Z = -L * np.cos(alpha) - D * np.sin(alpha)
+    X = T - D * jnp.cos(alpha) + L * jnp.sin(alpha)
+    Z = -L * jnp.cos(alpha) - D * jnp.sin(alpha)
 
-    u_dot = X/m - g*np.sin(theta) - q*w
-    w_dot = Z/m + g*np.cos(theta) + q*u
+    u_dot = X/m - g*jnp.sin(theta) - q*w
+    w_dot = Z/m + g*jnp.cos(theta) + q*u
     q_dot = M/I_y
     theta_dot = q
-    x_e_dot = u*np.cos(theta) + w*np.sin(theta)
-    z_e_dot = w*np.cos(theta) - u*np.sin(theta)
+    x_e_dot = u*jnp.cos(theta) + w*jnp.sin(theta)
+    z_e_dot = w*jnp.cos(theta) - u*jnp.sin(theta)
 
-    return np.array([u_dot, w_dot, q_dot, theta_dot, x_e_dot, z_e_dot])
+    return jnp.array([u_dot, w_dot, q_dot, theta_dot, x_e_dot, z_e_dot])

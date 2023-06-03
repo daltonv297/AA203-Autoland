@@ -2,6 +2,8 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from dynamics import f
 import matplotlib.pyplot as plt
+import jax
+import jax.numpy as jnp
 
 
 
