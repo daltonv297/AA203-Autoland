@@ -1,6 +1,6 @@
 import numpy as np
 
-def f(s, u_in):
+def f(t, s, u_in):
     '''Computes s_dot = f(s, u_in).
 
     Coordinate system (body-fixed):
@@ -17,18 +17,18 @@ def f(s, u_in):
     s : numpy.ndarray
         Current state
         s = [u, w, q, theta, x_e, z_e]
-            u: velocity component parallel to X_b
-            w: velocity component parallel to Z_b
-            q: pitch rate (positive nose up)
-            theta: pitch angle (positive nose up)
-            x_e: earth-fixed x position
-            z_e: earth-fixed z position (positive down)
+            u: velocity component parallel to X_b (m/s)
+            w: velocity component parallel to Z_b (m/s)
+            q: pitch rate (positive nose up) (rad/s)
+            theta: pitch angle (positive nose up) (rad)
+            x_e: earth-fixed x position (m)
+            z_e: earth-fixed z position (positive down) (m)
             
     u_in : numpy.ndarray
         Control input
         u_in = [T, delta_e]
-            T: thrust
-            delta_e: elevator deflection angle (positive down)
+            T: thrust (N)
+            delta_e: elevator deflection angle (positive down) (degrees)
 
     Returns
     -------
@@ -42,7 +42,7 @@ def f(s, u_in):
 
     # https://www.boeing.com/commercial/airports/3_view.page
     m = 272000 # mass, kg
-    I_y = 1 # Moment of inertia about the y-axis, kg*m^2 
+    I_y = 5.07e9 # Moment of inertia about the y-axis, kg*m^2 
     S = 511 # planform wing area, m^2
     c = 9.14 # mean aerodynamic chord, m
     AR = 8 # aspect ratio
