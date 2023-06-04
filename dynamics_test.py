@@ -35,7 +35,7 @@ fd = discretize(f_no_time, dt)
 s0 = np.array([
     150, # u0, m/s
     5, # w0, m/s
-    0, # q0, rad/s
+    0.01, # q0, rad/s
     0.05, # theta0, rad
     -1500, # x0, m
     -1000, # z0, m
@@ -47,6 +47,7 @@ m = 2
 T = 10
 t = np.arange(0., T + dt, dt)
 N = t.size - 1
+eps = 1e-2
 
 u = np.full((N, m), [0.0*Thr_max, 0.0])
 s = np.zeros((N + 1, n))
@@ -58,7 +59,7 @@ A, B, c = affinize(fd, s[:-1], u)
 A, B, c = np.array(A), np.array(B), np.array(c)
 
 s_linear = np.zeros_like(s)
-u_linear = np.full((N, m), [0.0*Thr_max, -0.5])
+u_linear = np.full((N, m), [0.0*Thr_max, -0.0])
 s_linear[0] = s0
 for k in range(N):
     s_linear[k+1] = A[k] @ s_linear[k] + B[k] @ u_linear[k] + c[k]
@@ -75,7 +76,7 @@ for k in range(N):
 # s_out = soln.y
 
 # u, w, q, theta, x, z = s_out
-deviation = np.linalg.norm(s - s_linear, ord=np.inf, axis=1)
+deviation = np.linalg.norm((s - s_linear)/(s + eps), ord=np.inf, axis=1)
 s = s_linear
 u = s[:, 0]
 w = s[:, 1]
@@ -87,7 +88,7 @@ h = -z
 V = np.sqrt(u*u + w*w)
 alpha = np.degrees(np.arctan(w/u))
 theta_deg = np.degrees(theta)
-horiz_var = t
+horiz_var = x
 
 
 fig, axs = plt.subplots(4, 2, figsize=(12,12))

@@ -169,6 +169,8 @@ def scp_iteration(f, s0, s_goal, s_prev, u_prev, N, P, Q, R, T_max, delta_e_max,
     # s_cvx_costonly = s_cvx[:, [0, 5]]
     # u_cvx_costonly = s_cvx[:, 0]
 
+    eps = 1e-2
+
     constraints = []
     cost_terms = []
     for k in range(N):
@@ -183,8 +185,9 @@ def scp_iteration(f, s0, s_goal, s_prev, u_prev, N, P, Q, R, T_max, delta_e_max,
         if k > 0:
             constraints.append(A[k-1] @ s_cvx[k-1] + B[k-1] @ u_cvx[k-1] + c[k-1] == s_cvx[k])
 
-        constraints.append(cvx.norm(s_cvx[k] - s_prev[k], 'inf') <= ρ)
-        constraints.append(cvx.norm(u_cvx[k] - u_prev[k], 'inf') <= ρ)
+        # Trust region constraints
+        constraints.append(cvx.norm((s_cvx[k] - s_prev[k]) / (s_prev[k] + eps), 'inf') <= ρ)
+        constraints.append(cvx.norm((u_cvx[k] - u_prev[k]) / (u_prev[k] + eps), 'inf') <= ρ)
         
         # thrust constraint
         constraints.append(u_cvx[k, 0] >= 0)
@@ -199,7 +202,7 @@ def scp_iteration(f, s0, s_goal, s_prev, u_prev, N, P, Q, R, T_max, delta_e_max,
     objective = cvx.sum(cost_terms)
 
     prob = cvx.Problem(cvx.Minimize(objective), constraints)
-    prob.solve()
+    prob.solve(verbose=False)
     if prob.status == 'optimal_inaccurate':
         print('inaccurate solution')
     elif prob.status != 'optimal':
@@ -211,9 +214,9 @@ def scp_iteration(f, s0, s_goal, s_prev, u_prev, N, P, Q, R, T_max, delta_e_max,
 
 s0 = np.array([
     150, # u0, m/s
-    0, # w0, m/s
-    0, # q0, rad/s
-    0, # theta0, rad
+    5, # w0, m/s
+    0.01, # q0, rad/s
+    0.05, # theta0, rad
     -1500, # x0, m
     -1000, # z0, m
 ])
@@ -226,10 +229,11 @@ m = 2                                # control dimension
 s_goal = np.array([150, 0, 0, 0, 0, -1000])  # desired state
 dt = 0.1                             # discrete time resolution
 T = 10.                              # total simulation time
-P = np.diag([1e3, 1e-5, 1e-5, 1e-5, 1e-5, 1e3])                    # terminal state cost matrix
+# P = np.diag([1e3, 1e-5, 1e-5, 1e-5, 1e-5, 1e3])                    # terminal state cost matrix
 Q = np.diag([1, 1e-5, 1e-5, 1e-5, 1e-5, 1])  # state cost matrix
+P = Q
 R = np.diag([1e-5, 1e-3])                   # control cost matrix
-ρ = 10.                               # trust region parameter
+ρ = 0.7                               # trust region parameter
 eps = 5e-1                           # convergence tolerance
 max_iters = 100                      # maximum number of SCP iterations
 
@@ -247,6 +251,8 @@ s, u, J = solve_scp(fd, s0, s_goal, N, P, Q, R, T_max, delta_e_max, ρ,
 for k in range(N):
     s[k+1] = fd(s[k], u[k])
 
+Thr = u[:, 0]
+delta_e = u[:, 1]
 # u, w, q, theta, x, z = s
 u = s[:, 0]
 w = s[:, 1]
@@ -258,27 +264,28 @@ h = -z
 V = np.sqrt(u*u + w*w)
 alpha = np.degrees(np.arctan(w/u))
 theta_deg = np.degrees(theta)
+horiz_var = t
 
 fig, axs = plt.subplots(4, 2, figsize=(12,12))
-axs[0,0].plot(x, h)
-axs[0,0].set_xlabel('x')
+axs[0,0].plot(horiz_var, h)
 axs[0,0].set_ylabel('h')
-axs[1,0].plot(x, V)
-axs[1,0].set_xlabel('x')
+axs[1,0].plot(horiz_var, V)
 axs[1,0].set_ylabel('V')
-axs[2,0].plot(x, alpha)
-axs[2,0].set_xlabel('x')
+axs[2,0].plot(horiz_var, alpha)
 axs[2,0].set_ylabel(r'$\alpha$')
-axs[3,0].plot(x, theta_deg)
-axs[3,0].set_xlabel('x')
+axs[3,0].plot(horiz_var, theta_deg)
 axs[3,0].set_ylabel(r'$\theta$')
-axs[0,1].plot(x, u)
-axs[0,1].set_xlabel('x')
+axs[0,1].plot(horiz_var, u)
 axs[0,1].set_ylabel('u')
-axs[1,1].plot(x, w)
-axs[1,1].set_xlabel('x')
+axs[1,1].plot(horiz_var, w)
 axs[1,1].set_ylabel('w')
-axs[2,1].plot(x, q)
-axs[2,1].set_xlabel('x')
+axs[2,1].plot(horiz_var, q)
 axs[2,1].set_ylabel('q')
+color = 'tab:blue'
+axs[3,1].plot(horiz_var[:-1], Thr, color=color)
+axs[3,1].set_ylabel('Thrust', color=color)
+ax_twin = axs[3,1].twinx()
+color = 'tab:orange'
+ax_twin.plot(horiz_var[:-1], delta_e, color=color)
+ax_twin.set_ylabel(r'$\delta_e$', color=color)
 plt.show()
