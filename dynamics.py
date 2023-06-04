@@ -55,7 +55,7 @@ def f(t, s, u_in):
     CL_delta_e = 0.00729
     CM_alpha = -1.177
     CM_q = -26.684
-    CM_delta_e = -0.0241
+    CM_delta_e = -0.05
     CL0 = 0.1720 # AVL
     CD0 = 0.0184 # https://www.sesarju.eu/sites/default/files/documents/sid/2018/papers/SIDs_2018_paper_75.pdf
     CM0 = -0.0969 # AVL

@@ -107,7 +107,7 @@ def solve_scp(f, s0, s_goal, N, P, Q, R, T_max, delta_e_max, ρ, eps, max_iters)
         s, u, J[i + 1] = scp_iteration(f, s0, s_goal, s, u, N,
                                        P, Q, R, T_max, delta_e_max, ρ)
         dJ = np.abs(J[i + 1] - J[i])
-        prog_bar.set_postfix({'objective change': '{:.5f}'.format(dJ)})
+        prog_bar.set_postfix({'objective': '{:.5f}'.format(J[i+1]),'objective change': '{:.5f}'.format(dJ)})
         if dJ < eps:
             converged = True
             print('SCP converged after {} iterations.'.format(i))
@@ -219,17 +219,17 @@ s0 = np.array([
 ])
 
 T_max = 1000e3 # N
-delta_e_max = 30 # deg
+delta_e_max = 10 # deg
 
 n = 6                                # state dimension
 m = 2                                # control dimension
 s_goal = np.array([150, 0, 0, 0, 0, -1000])  # desired state
 dt = 0.1                             # discrete time resolution
 T = 10.                              # total simulation time
-P = np.diag([1e3, 0, 0, 0, 0, 1e3])                    # terminal state cost matrix
-Q = np.diag([1e-2, 0, 0, 0, 0, 1e-2])  # state cost matrix
-R = np.diag([0, 1e-3])                   # control cost matrix
-ρ = 1.                               # trust region parameter
+P = np.diag([1e3, 1e-5, 1e-5, 1e-5, 1e-5, 1e3])                    # terminal state cost matrix
+Q = np.diag([1, 1e-5, 1e-5, 1e-5, 1e-5, 1])  # state cost matrix
+R = np.diag([1e-5, 1e-3])                   # control cost matrix
+ρ = 10.                               # trust region parameter
 eps = 5e-1                           # convergence tolerance
 max_iters = 100                      # maximum number of SCP iterations
 
@@ -247,7 +247,7 @@ s, u, J = solve_scp(fd, s0, s_goal, N, P, Q, R, T_max, delta_e_max, ρ,
 for k in range(N):
     s[k+1] = fd(s[k], u[k])
 
-u, w, q, theta, x, z = s
+# u, w, q, theta, x, z = s
 u = s[:, 0]
 w = s[:, 1]
 q = s[:, 2]
@@ -257,10 +257,28 @@ z = s[:, 5]
 h = -z
 V = np.sqrt(u*u + w*w)
 alpha = np.degrees(np.arctan(w/u))
+theta_deg = np.degrees(theta)
 
-fig, axs = plt.subplots(4, 1)
-axs[0].plot(x, h)
-axs[1].plot(x, V)
-axs[2].plot(x, alpha)
-axs[3].plot(x, theta)
+fig, axs = plt.subplots(4, 2, figsize=(12,12))
+axs[0,0].plot(x, h)
+axs[0,0].set_xlabel('x')
+axs[0,0].set_ylabel('h')
+axs[1,0].plot(x, V)
+axs[1,0].set_xlabel('x')
+axs[1,0].set_ylabel('V')
+axs[2,0].plot(x, alpha)
+axs[2,0].set_xlabel('x')
+axs[2,0].set_ylabel(r'$\alpha$')
+axs[3,0].plot(x, theta_deg)
+axs[3,0].set_xlabel('x')
+axs[3,0].set_ylabel(r'$\theta$')
+axs[0,1].plot(x, u)
+axs[0,1].set_xlabel('x')
+axs[0,1].set_ylabel('u')
+axs[1,1].plot(x, w)
+axs[1,1].set_xlabel('x')
+axs[1,1].set_ylabel('w')
+axs[2,1].plot(x, q)
+axs[2,1].set_xlabel('x')
+axs[2,1].set_ylabel('q')
 plt.show()
