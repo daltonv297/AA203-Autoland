@@ -2,7 +2,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-def f(t, s, u_in):
+def f_simplified(t, s, u_in):
     '''Computes s_dot = f(s, u_in).
 
     Coordinate system (body-fixed):
@@ -28,9 +28,10 @@ def f(t, s, u_in):
             
     u_in : jax.numpy.ndarray
         Control input
-        u_in = [T, delta_e]
-            T: thrust command (0 <= T <= 1) (N)
-            delta_e: elevator deflection command (-1 <= delta_e <= 1) (positive down) (degrees)
+        u_in = [X, Z, M]
+            X: X force (N)
+            Z: Z force (N)
+            M: Pitching moment (N-m)
 
     Returns
     -------
@@ -45,51 +46,9 @@ def f(t, s, u_in):
     # https://www.boeing.com/commercial/airports/3_view.page
     m = 272000 # mass, kg
     I_y = 5.07e9 # Moment of inertia about the y-axis, kg*m^2 
-    S = 511 # planform wing area, m^2
-    c = 9.14 # mean aerodynamic chord, m
-    AR = 8 # aspect ratio
-    e = 0.85 # Oswald efficiency factor
-    # m = 10
-    # I_y = 1000
-    # S = 1
-    # c = 0.1
-    # stability derivatives:
-    CL_alpha = 4.758 
-    CL_q = 9.911
-    CL_delta_e = 0.00729
-    CM_alpha = -1.177
-    CM_q = -26.684
-    CM_delta_e = -0.05
-    CL0 = 0.1720 # AVL
-    CD0 = 0.0184 # https://www.sesarju.eu/sites/default/files/documents/sid/2018/papers/SIDs_2018_paper_75.pdf
-    CM0 = -0.0969 # AVL
     
-    T_max = 1000e3 # N
-    delta_e_max = 30 # deg
-
     u, w, q, theta, x_e, z_e = s
-    T_c, delta_e_c = u_in
-
-    T = T_c * T_max
-    delta_e = delta_e_c * delta_e_max
-    
-    V = jnp.sqrt(u*u + w*w)
-    alpha = jnp.arctan(w/u)
-    q_hat = q * c / (2 * V)
-
-    # Lift, drag, and moment coefficients
-    CL = CL0 + CL_alpha*alpha + CL_q*q_hat + CL_delta_e*delta_e
-    CM = CM0 + CM_alpha*alpha + CM_q*q_hat + CM_delta_e*delta_e
-    CD = CD0 + CL*CL / (np.pi * AR * e)
-
-    # Lift, drag, and moment forces (wind frame)
-    L = 0.5 * rho * V*V * S * CL
-    D = 0.5 * rho * V*V * S * CD
-    M = 0.5 * rho * V*V * S * c * CM
-
-    # X and Z forces (body frame)
-    X = T - D * jnp.cos(alpha) + L * jnp.sin(alpha)
-    Z = -L * jnp.cos(alpha) - D * jnp.sin(alpha)
+    X, Z, M = u_in
 
     u_dot = X/m - g*jnp.sin(theta) - q*w
     w_dot = Z/m + g*jnp.cos(theta) + q*u

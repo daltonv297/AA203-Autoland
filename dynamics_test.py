@@ -32,16 +32,26 @@ f_no_time = lambda s, u : f(None, s, u)
 # Initialize the discrete-time dynamics
 fd = discretize(f_no_time, dt)
 
+# s0 = np.array([
+#     150, # u0, m/s
+#     5, # w0, m/s
+#     0.01, # q0, rad/s
+#     0.05, # theta0, rad
+#     -1500, # x0, m
+#     -1000, # z0, m
+# ])
 s0 = np.array([
-    150, # u0, m/s
-    5, # w0, m/s
+    10, # u0, m/s
+    0.5, # w0, m/s
     0.01, # q0, rad/s
     0.05, # theta0, rad
-    -1500, # x0, m
-    -1000, # z0, m
+    1, # x0, m
+    1, # z0, m
 ])
 
-Thr_max = 1000e3 # N
+# Thr_max = 1000e3 # N
+Thr_max = 10 
+
 n = 6
 m = 2
 T = 10
@@ -49,7 +59,7 @@ t = np.arange(0., T + dt, dt)
 N = t.size - 1
 eps = 1e-2
 
-u = np.full((N, m), [0.0*Thr_max, 0.0])
+u = np.full((N, m), [10.0*Thr_max, -1])
 s = np.zeros((N + 1, n))
 s[0] = s0
 for k in range(N):
@@ -77,7 +87,7 @@ for k in range(N):
 
 # u, w, q, theta, x, z = s_out
 deviation = np.linalg.norm((s - s_linear)/(s + eps), ord=np.inf, axis=1)
-s = s_linear
+# s = s_linear
 u = s[:, 0]
 w = s[:, 1]
 q = s[:, 2]
@@ -88,7 +98,7 @@ h = -z
 V = np.sqrt(u*u + w*w)
 alpha = np.degrees(np.arctan(w/u))
 theta_deg = np.degrees(theta)
-horiz_var = x
+horiz_var = t
 
 
 fig, axs = plt.subplots(4, 2, figsize=(12,12))

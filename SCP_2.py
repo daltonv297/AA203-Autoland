@@ -12,28 +12,6 @@ from functools import partial
 @partial(jax.jit, static_argnums=(0,))
 @partial(jax.vmap, in_axes=(None, 0, 0))
 def affinize(f, s, u):
-    """Affinize the function `f(s, u)` around `(s, u)`.
-
-    Arguments
-    ---------
-    f : callable
-        A nonlinear function with call signature `f(s, u)`.
-    s : numpy.ndarray
-        The state (1-D).
-    u : numpy.ndarray
-        The control input (1-D).
-
-    Returns
-    -------
-    A : jax.numpy.ndarray
-        The Jacobian of `f` at `(s, u)`, with respect to `s`.
-    B : jax.numpy.ndarray
-        The Jacobian of `f` at `(s, u)`, with respect to `u`.
-    c : jax.numpy.ndarray
-        The offset term in the first-order Taylor expansion of `f` at `(s, u)`
-        that sums all vector terms strictly dependent on the nominal point
-        `(s, u)` alone.
-    """
     A, B = jax.jacrev(f, (0,1))(s, u)
     c = f(s, u) - A @ s - B @ u
     return A, B, c
@@ -51,45 +29,6 @@ def discretize(f, dt):
     return integrator
 
 def solve_scp(f, s0, s_goal, N, P, Q, R, T_max, delta_e_max, ρ, eps, max_iters):
-    """
-    Parameters
-    ----------
-    f : callable
-        A function describing the discrete-time dynamics, such that
-        `s[k+1] = f(s[k], u[k])`.
-    s0 : numpy.ndarray
-        The initial state (1-D).
-    s_goal : numpy.ndarray
-        The goal state (1-D).
-    N : int
-        The time horizon of the LQR cost function.
-    P : numpy.ndarray
-        The terminal state cost matrix (2-D).
-    Q : numpy.ndarray
-        The state stage cost matrix (2-D).
-    R : numpy.ndarray
-        The control stage cost matrix (2-D).
-    u_max : float
-        The bound defining the control set `[-u_max, u_max]`.
-    ρ : float
-        Trust region radius.
-    eps : float
-        Termination threshold for SCP.
-    max_iters : int
-        Maximum number of SCP iterations.
-
-    Returns
-    -------
-    s : numpy.ndarray
-        A 2-D array where `s[k]` is the open-loop state at time step `k`,
-        for `k = 0, 1, ..., N-1`
-    u : numpy.ndarray
-        A 2-D array where `u[k]` is the open-loop state at time step `k`,
-        for `k = 0, 1, ..., N-1`
-    J : numpy.ndarray
-        A 1-D array where `J[i]` is the SCP sub-problem cost after the i-th
-        iteration, for `i = 0, 1, ..., (iteration when convergence occured)`
-    """
     n = Q.shape[0]  # state dimension
     m = R.shape[0]  # control dimension
 
@@ -120,45 +59,6 @@ def solve_scp(f, s0, s_goal, N, P, Q, R, T_max, delta_e_max, ρ, eps, max_iters)
 
 
 def scp_iteration(f, s0, s_goal, s_prev, u_prev, N, P, Q, R, T_max, delta_e_max, ρ):
-    """Solve a single SCP sub-problem for the cart-pole swing-up problem.
-
-    Arguments
-    ---------
-    f : callable
-        A function describing the discrete-time dynamics, such that
-        `s[k+1] = f(s[k], u[k])`.
-    s0 : numpy.ndarray
-        The initial state (1-D).
-    s_goal : numpy.ndarray
-        The goal state (1-D).
-    s_prev : numpy.ndarray
-        The state trajectory around which the problem is convexified (2-D).
-    u_prev : numpy.ndarray
-        The control trajectory around which the problem is convexified (2-D).
-    N : int
-        The time horizon of the LQR cost function.
-    P : numpy.ndarray
-        The terminal state cost matrix (2-D).
-    Q : numpy.ndarray
-        The state stage cost matrix (2-D).
-    R : numpy.ndarray
-        The control stage cost matrix (2-D).
-    u_max : float
-        The bound defining the control set `[-u_max, u_max]`.
-    ρ : float
-        Trust region radius.
-
-    Returns
-    -------
-    s : numpy.ndarray
-        A 2-D array where `s[k]` is the open-loop state at time step `k`,
-        for `k = 0, 1, ..., N-1`
-    u : numpy.ndarray
-        A 2-D array where `u[k]` is the open-loop state at time step `k`,
-        for `k = 0, 1, ..., N-1`
-    J : float
-        The SCP sub-problem cost.
-    """
     A, B, c = affinize(f, s_prev[:-1], u_prev)
     A, B, c = np.array(A), np.array(B), np.array(c)
     n = Q.shape[0]
@@ -166,17 +66,11 @@ def scp_iteration(f, s0, s_goal, s_prev, u_prev, N, P, Q, R, T_max, delta_e_max,
     s_cvx = cvx.Variable((N + 1, n))
     u_cvx = cvx.Variable((N, m))
 
-    # terms that will have nonzero cost penalties
-    # s_cvx_costonly = s_cvx[:, [0, 5]]
-    # u_cvx_costonly = s_cvx[:, 0]
-
     eps = 1e-1
 
     constraints = []
     cost_terms = []
     for k in range(N):
-        # cost_terms.append(cvx.quad_form(s_cvx_costonly[k] - s_goal, Q))
-        # cost_terms.append(cvx.quad_form(u_cvx_costonly[k], R))
         cost_terms.append(cvx.quad_form(s_cvx[k] - s_goal, Q))
         cost_terms.append(cvx.quad_form(u_cvx[k], R))
 
@@ -188,13 +82,13 @@ def scp_iteration(f, s0, s_goal, s_prev, u_prev, N, P, Q, R, T_max, delta_e_max,
 
         # Trust region constraints
         constraints.append(cvx.norm((s_cvx[k] - s_prev[k]) / (s_prev[k] + eps)) <= ρ)
-        constraints.append(cvx.norm((u_cvx[k] - u_prev[k]) / (u_prev[k] + eps)) <= ρ)
+        # constraints.append(cvx.norm((u_cvx[k] - u_prev[k]) / (u_prev[k] + eps)) <= ρ)
         
-        # # thrust constraint
-        # constraints.append(u_cvx[k, 0] >= 0)
-        # constraints.append(u_cvx[k, 0] <= T_max)
-        # # # elevator constraint
-        # constraints.append(cvx.abs(u_cvx[k, 1]) <= delta_e_max)
+        # thrust constraint
+        constraints.append(u_cvx[k, 0] >= 0)
+        constraints.append(u_cvx[k, 0] <= T_max)
+        # elevator constraint
+        constraints.append(cvx.abs(u_cvx[k, 1]) <= delta_e_max)
 
 
     constraints.append(A[N-1] @ s_cvx[N-1] + B[N-1] @ u_cvx[N-1] + c[N-1] == s_cvx[N])
@@ -213,44 +107,31 @@ def scp_iteration(f, s0, s_goal, s_prev, u_prev, N, P, Q, R, T_max, delta_e_max,
     J = prob.objective.value
     return s, u, J
 
-# s0 = np.array([
-#     150, # u0, m/s
-#     5, # w0, m/s
-#     0.01, # q0, rad/s
-#     0.05, # theta0, rad
-#     -1500, # x0, m
-#     -1000, # z0, m
-# ])
 s0 = np.array([
-    10, # u0, m/s
-    0.5, # w0, m/s
+    150, # u0, m/s
+    5, # w0, m/s
     0.01, # q0, rad/s
-    0.05, # theta0, rad
-    1, # x0, m
-    1, # z0, m
+    0.02, # theta0, rad
+    -1500, # x0, m
+    -1000, # z0, m
 ])
 
-T_max = 1000e3 # N
-delta_e_max = 10 # deg
-# T_max = 100
-# delta_e_max = 10
+T_max = 1
+delta_e_max = 1
 
+s_goal = np.array([150, 0, 0, 0, 0, -1000])  # desired state
+Q = np.diag([10, 1e-3, 1e-1, 1e-1, 1e-5, 1])
+P = Q
+R = np.diag([5.0, 5.0])                 # control cost matrix
 
 n = 6                                # state dimension
 m = 2                                # control dimension
-# s_goal = np.array([150, 0, 0, 0, 0, -1000])  # desired state
-s_goal = np.array([10, 0, 0, 0, 0, 0])  # desired state
 dt = 0.1                             # discrete time resolution
-T = 10.                              # total simulation time
-P = np.diag([1e3, 1e-5, 1e-5, 1e-5, 1e-5, 1e3])                    # terminal state cost matrix
-Q = np.diag([1e3, 1e-5, 1e-5, 1e-5, 1e-5, 1e3])  # state cost matrix
-# P = Q
-R = np.diag([1e-5, 1e-3])                   # control cost matrix
-ρ = 1.0                               # trust region parameter
+T = 15.                              # total simulation time
+ρ = 0.5                               # trust region parameter
 eps = 5e-2                           # convergence tolerance
 max_iters = 100                      # maximum number of SCP iterations
 
-# f_no_time = lambda s, u : f(None, s, u)
 f_no_time = lambda s, u : f(None, s, u)
 # Initialize the discrete-time dynamics
 fd = jax.jit(discretize(f_no_time, dt))
@@ -267,10 +148,6 @@ for k in range(N):
 
 Thr = u[:, 0]
 delta_e = u[:, 1]
-# X = u[:, 0]
-# Z = u[:, 0]
-# M = u[:, 0]
-# u, w, q, theta, x, z = s
 u = s[:, 0]
 w = s[:, 1]
 q = s[:, 2]
