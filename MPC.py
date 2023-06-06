@@ -60,10 +60,16 @@ def scp_iteration(f, s0, s_goal, s_prev, u_prev, P, Q, R, ρ):
         constraints.append(u_cvx[k, 0] >= 0)
         constraints.append(u_cvx[k, 0] <= 1)
         # # elevator constraint
-        # constraints.append(cvx.abs(u_cvx[k, 1]) <= 1)
+        constraints.append(cvx.abs(u_cvx[k, 1]) <= 1)
+        
+        # don't crash into ground
+        constraints.append(s_cvx[k, -1] <= 0)
+        # theta constraint
+        constraints.append(s_cvx[k, 3] >= -0.5)
 
     constraints.append(A[N-1] @ s_cvx[N-1] + B[N-1] @ u_cvx[N-1] + c[N-1] == s_cvx[N])
     cost_terms.append(cvx.quad_form(s_cvx[N] - s_goal, P))
+    # constraints.append(s_cvx[N, -1] <= 0)
 
     objective = cvx.sum(cost_terms)
 
@@ -105,6 +111,7 @@ def solve_scp(f, s0, s_goal, N, P, Q, R, eps, max_iters, ρ,
     J[0] = np.inf
     for i in range(max_iters):
         s, u, J[i + 1] = scp_iteration(f, s0, s_goal, s, u, P, Q, R, ρ)
+        print('objective: ' + str(J[i+1]))
         # for k in range(N):
         #     s[k+1] = f(s[k], u[k])
         dJ = np.abs(J[i + 1] - J[i])
@@ -128,8 +135,8 @@ scaling_factor = np.array([
 s0 = np.array([
     150, # u0, m/s
     5, # w0, m/s
-    -0.01, # q0, rad/s
-    -0.02, # theta0, rad
+    0.0, # q0, rad/s
+    0.0, # theta0, rad
     -1500, # x0, m
     -100, # z0, m
 ])
@@ -151,7 +158,9 @@ m = 2                                   # control dimension
 # P = np.diag(np.array([10, 1e-3, 1e-1, 1e-1, 1e-5, 1000]))                         # terminal state cost matrix
 Q = np.diag([10, 0.1, 0.1, 0.1, 0.1, 10])
 P = np.diag([10, 0.1, 0.1, 0.1, 0.1, 1000])
-R = np.diag([0.01, 0.01])
+# Q = np.diag([0, 0, 0, 0, 0, 100])
+# P = np.diag([0, 0, 0, 0, 0, 1000])
+R = np.diag([1, 1])
 
 # Define constants
 T = 100                                  # total simulation time
@@ -159,8 +168,8 @@ dt = 0.1
 eps = 1e-3                              # SCP convergence tolerance
 ρ = 1.0
 
-N = 10       # MPC horizon
-N_scp = 10  # maximum number of SCP iterations
+N = 50       # MPC horizon
+N_scp = 20  # maximum number of SCP iterations
 
 f_no_time = lambda s, u : f(None, s, u, scaling_factor)
 # Initialize the discrete-time dynamics
@@ -220,7 +229,7 @@ for i, ax in enumerate(axs.T.reshape(-1)[:-1]):
         ax.plot(horiz_var[t, :], state_dict[i][t, :], '--*', color='k')
     ax.plot(horiz_var[:, 0], state_dict[i][:, 0], '-o')
     ax.set_ylabel(label_dict[i])
-    ax.axis('equal')
+    # ax.axis('equal')
 
 ax = axs.reshape(-1)[-1]
 
