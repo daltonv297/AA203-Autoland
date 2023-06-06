@@ -2,7 +2,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-def f(t, s, u_in):
+def f(t, s_scaled, u_in, scaling_factor=1):
     '''Computes s_dot = f(s, u_in).
 
     Coordinate system (body-fixed):
@@ -67,6 +67,8 @@ def f(t, s, u_in):
     T_max = 1000e3 # N
     delta_e_max = 30 # deg
 
+    s = s_scaled / scaling_factor
+
     u, w, q, theta, x_e, z_e = s
     T_c, delta_e_c = u_in
 
@@ -98,4 +100,4 @@ def f(t, s, u_in):
     x_e_dot = u*jnp.cos(theta) + w*jnp.sin(theta)
     z_e_dot = w*jnp.cos(theta) - u*jnp.sin(theta)
 
-    return jnp.array([u_dot, w_dot, q_dot, theta_dot, x_e_dot, z_e_dot])
+    return jnp.array([u_dot, w_dot, q_dot, theta_dot, x_e_dot, z_e_dot]) * scaling_factor
